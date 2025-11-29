@@ -36,3 +36,77 @@ graph-closure-randomized/
 ├── SWmediumG.txt         # Benchmark dataset (Medium)
 ├── SWlargeG.txt          # Benchmark dataset (Large)
 └── README.md             # Project documentation
+```
+
+## 🛠️ Installation
+
+This project is managed using modern Python tooling. You can set it up using `uv` (recommended for speed and lock-file consistency) or standard `pip`.
+
+### Prerequisites
+* Python 3.9+
+* Git
+
+### Option 1: Using `uv` (Recommended)
+This project includes a `uv.lock` file to ensure deterministic builds.
+
+1. **Install uv** (if not already installed):
+```bash
+    pip install uv
+```
+2. **Sync dependencies and environment:**
+```bash
+    uv sync
+```
+3. **Run the project:**
+```bash
+    uv run main.py
+```
+### Option 2: Using standard `pip`
+If you prefer a traditional virtual environment:
+
+1. **Create and activate a virtual environment:**
+```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+2. **Install dependencies:**
+```bash
+    pip install -e .
+    # Or manually: pip install networkx matplotlib numpy pandas notebook
+```
+## 💻 Usage
+
+### Running Experiments
+The core experimental logic is contained in `main.py`. This script loads the graph datasets from the `data/` folder, runs the randomized closure algorithm for various values of $k$, and logs the performance.
+```bash
+    # If using uv
+    uv run main.py
+
+    # If using standard python
+    python main.py
+```
+### Interactive Demo
+To visualize the graph structures and step through the algorithm logic interactively, use the provided Jupyter Notebook:
+
+    jupyter notebook project2_demo.ipynb
+
+## 🧪 Testing
+
+Unit tests are located in the `tests/` directory. These ensure that the graph condensation logic and the greedy solver adhere to the closure properties.
+
+To run the tests:
+
+    python -m unittest discover tests
+
+## 📊 Results
+
+When running `main.py`, the experiment data is exported to `experiment_results.csv`. This file contains the following metrics for each run:
+
+* **Graph Name:** The dataset used (e.g., `SWtinyG`).
+* **Target Size ($k$):** The desired number of vertices in the closure.
+* **Success:** Whether the algorithm successfully found a closure of size $k$.
+* **Iterations/Time:** Efficiency metrics for the randomized approach.
+
+## 📄 License
+
+This project is open-source and available under the [MIT License](LICENSE).
