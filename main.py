@@ -4,8 +4,17 @@ import pandas as pd
 from src.data_loader import GraphLoader
 from src.solvers import ClosureSolver
 
-# --- Configuration ---
-# Add your new dataset here once downloaded (e.g., 'data/cit-HepTh.txt')
+# [REQ 3c] Import Project 1 Solver for Comparison
+# We wrap this in try-except in case the file name varies slightly
+try:
+    from src.legacy_solver import LegacyGreedySolver
+    HAS_LEGACY = True
+except ImportError:
+    HAS_LEGACY = False
+    print("[WARNING] 'src/legacy_solver.py' not found or class name mismatch.")
+    print("Comparison column will be empty.")
+
+# Configuration
 DATA_FILES = [
     "data/SWtinyG.txt", 
     "data/SWmediumG.txt", 
@@ -18,7 +27,7 @@ def run_experiments():
     results = []
     
     print(f"{'='*60}")
-    print(f"Starting Experiments on {len(DATA_FILES)} files...")
+    print(f"Starting Experiments (Project 2 vs Project 1 Comparison)...")
     print(f"{'='*60}\n")
 
     for filename in DATA_FILES:
@@ -33,77 +42,80 @@ def run_experiments():
             # 1. Load Graph
             G = GraphLoader.load_graph(filepath)
             n = G.number_of_nodes()
-            m = G.number_of_edges()
-            print(f" -> Loaded: {n} vertices, {m} edges.")
-
-            # 2. Initialize Solver & Analyze Structure
-            print(f" -> Preprocessing (Condensing SCCs)...")
+            
+            # 2. Preprocess (Project 2)
             start_prep = time.perf_counter()
             solver = ClosureSolver(G)
             prep_time = time.perf_counter() - start_prep
             
-            # Find Giant Component size
+            # Analyze Structure
             scc_sizes = [d['weight'] for n, d in solver.dag.nodes(data=True)]
             largest_scc = max(scc_sizes) if scc_sizes else 0
-            print(f" -> Preprocessing complete in {prep_time:.4f}s")
-            print(f" -> Largest SCC: {largest_scc} nodes ({largest_scc/n:.1%} of graph)")
             
             # 3. Define Targets
-            # We include standard targets AND targets specifically around the Giant SCC
-            targets = []
+            targets = [int(n * p) for p in [0.25, 0.50, 0.75]]
             
-            # Standard percentages
-            for p in [0.25, 0.50, 0.75]:
-                targets.append(int(n * p))
-            
-            # "Smart" targets: Try to get just slightly more than the Giant SCC
-            # (This tests if we can add small components TO the giant one)
-            if largest_scc < n:
-                smart_k = int(largest_scc * 1.05) # Giant + 5%
+            # Smart Target for Giant Component
+            if largest_scc > 0 and largest_scc < n:
+                smart_k = int(largest_scc * 1.05)
                 if smart_k < n and smart_k not in targets:
                     targets.append(smart_k)
-            
-            targets = sorted(list(set(targets))) # Remove duplicates and sort
+            targets = sorted(list(set([t for t in targets if t > 0])))
 
             for k in targets:
-                print(f"    -> Target k={k} ({k/n:.1%})...", end="", flush=True)
+                print(f"    -> Target k={k}...", end="", flush=True)
                 
-                # Run the Randomized Top-Down Algorithm (Best Effort)
+                # --- A. PROJECT 2 (Randomized) ---
                 found, closure, stats = solver.solve_randomized_top_down(k=k, max_retries=20)
+                p2_size = len(closure) if closure else 0
                 
-                final_size = len(closure) if closure else 0
-                gap = final_size - k
+                # --- B. PROJECT 1 (Legacy Greedy) ---
+                # We skip Legacy on large graphs because O(N^2) is too slow
+                p1_size = "N/A"
+                p1_status = "Skipped"
                 
-                # Check if we got close
-                status = "EXACT" if final_size == k else f"CLOSE ({gap})"
-                print(f" Found size {final_size} in {stats['time']:.4f}s")
+                if HAS_LEGACY and n < 3000: # Limit to small/medium graphs
+                    try:
+                        # Using the static method from your snippet
+                        l_found, l_closure, l_stats = LegacyGreedySolver.solve(G, k)
+                        
+                        if l_found:
+                            p1_size = len(l_closure)
+                            p1_status = "Success"
+                        else:
+                            p1_size = 0
+                            p1_status = "Failed (Cycles?)"
+                    except Exception as e:
+                        p1_status = "Error"
+                elif n >= 3000:
+                    p1_status = "Too Slow"
+
+                # Comparison Output
+                print(f" P2 Size: {p2_size} | P1 Size: {p1_size} ({p1_status})")
                 
-                # Log Data
                 results.append({
                     "dataset": filename,
-                    "vertices": n,
-                    "edges": m,
-                    "largest_scc": largest_scc,
                     "k_target": k,
-                    "k_achieved": final_size,
-                    "gap": gap,
-                    "time_sec": stats['time'],
-                    "attempts": stats.get('attempts', 0),
-                    "prep_time_sec": prep_time
+                    "P2_Randomized_Size": p2_size,
+                    "P1_Legacy_Size": p1_size,
+                    "P1_Status": p1_status,
+                    "ops_count": stats['ops'],
+                    "time_sec": stats['time']
                 })
                 
         except Exception as e:
-            print(f"\n[ERROR] Processing {filename} failed: {e}")
+            print(f"\n[ERROR] {filename}: {e}")
             import traceback
             traceback.print_exc()
         
         print("-" * 60)
 
-    # 4. Save Results
+    # Save
     df = pd.DataFrame(results)
     df.to_csv(RESULTS_FILE, index=False)
     print(f"\nExperiments completed. Results saved to {RESULTS_FILE}")
-    print(df[["dataset", "k_target", "k_achieved", "time_sec"]])
+    # Print a nice summary comparison
+    print(df[["dataset", "k_target", "P2_Randomized_Size", "P1_Legacy_Size", "P1_Status"]])
 
 if __name__ == "__main__":
     run_experiments()
