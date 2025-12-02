@@ -27,7 +27,7 @@ class ClosureSolver:
             mapping[n] = members
         return C, mapping
 
-    def solve_randomized_top_down(self, k: int, max_retries: int = 50) -> Tuple[bool, Optional[Set[int]], Dict]:
+    def solve_randomized_top_down(self, k: int, max_retries: int = 50, max_time_sec: float = 60.) -> Tuple[bool, Optional[Set[int]], Dict]:
         """
         Randomized Solver that meets Project Requirements:
         1. Tracks 'ops' (Requirement 3b)
@@ -59,6 +59,8 @@ class ClosureSolver:
         best_weight = -1
         
         for attempt in range(max_retries):
+            if (time.perf_counter() - start_time) > max_time_sec:
+                break
             # Fast Init
             current_nodes = set(self.dag.nodes())
             current_weight = self.total_weight

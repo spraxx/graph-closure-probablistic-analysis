@@ -92,6 +92,26 @@ def run_experiments():
 
                 # Comparison Output
                 print(f" P2 Size: {p2_size} | P1 Size: {p1_size} ({p1_status})")
+                similarity_score = "N/A"
+                is_identical = False
+            
+            # Only compare if both algorithms actually found a solution
+                if p1_status == "Success" and closure:
+                    set_p1 = set(l_closure)
+                    set_p2 = set(closure)
+                
+                # Jaccard Similarity: Intersection over Union
+                    intersection = len(set_p1.intersection(set_p2))
+                    union = len(set_p1.union(set_p2))
+                
+                    if union > 0:
+                        similarity_score = intersection / union
+                        is_identical = (similarity_score == 1.0)
+                
+                    if is_identical:
+                        print(f"    [MATCH] Exact same solution found.")
+                    else:
+                        print(f"    [DIFF] Solutions differ. Similarity: {similarity_score:.2f}")
                 
                 results.append({
                     "dataset": filename,
@@ -102,6 +122,7 @@ def run_experiments():
                     "ops_count": stats['ops'],
                     "time_sec": stats['time']
                 })
+        
                 
         except Exception as e:
             print(f"\n[ERROR] {filename}: {e}")
