@@ -1,56 +1,66 @@
 import networkx as nx
 import time
+from typing import Tuple, Dict, Set, Any
+
 
 class LegacyGreedySolver:
     """
     Implementation of the Greedy Heuristic from Project 1.
-    This algorithm iteratively removes nodes with in-degree 0.
-    It is expected to FAIL on graphs with cycles (Strongly Connected Components).
+    
+    This algorithm iteratively removes nodes with in-degree 0 until the graph
+    is reduced to k nodes. It is expected to FAIL on graphs with cycles
+    (Strongly Connected Components).
     """
     
     @staticmethod
-    def solve(G: nx.DiGraph, k: int):
-        start_time = time.perf_counter()
+    def solve(G: nx.DiGraph, k: int) -> Tuple[bool, Set[int], Dict[str, Any]]:
+        """
+        Solve the feedback vertex set problem using a greedy heuristic.
         
-        # Working copy of the set of nodes
-        C = set(G.nodes())
+        Iteratively removes nodes with in-degree 0 from the graph until either:
+        - The remaining graph has k or fewer nodes (success)
+        - No nodes with in-degree 0 can be found (stuck on cycle)
         
-        # Stats
-        basic_ops = 0
+        Args:
+            G: A directed graph (nx.DiGraph) to reduce.
+            k: The target number of nodes to retain.
         
-        # Optimization: Track the graph view
-        # In Project 1, we often re-calculated degrees which is O(N^2) or O(N*M)
+        Returns:
+            A tuple containing:
+            - bool: True if the graph was successfully reduced to k nodes,
+                    False if the algorithm got stuck on a cycle.
+            - Set[int]: The set of remaining node identifiers.
+            - Dict[str, Any]: Metadata dictionary containing:
+                - "time" (float): Elapsed time in seconds.
+                - "status" (str): Either "SUCCESS" or "STUCK_ON_CYCLE".
+                - "basic_ops" (int): Total number of basic operations performed.
+        """
+        start_time: float = time.perf_counter()
+        C: Set[int] = set(G.nodes())
+        basic_ops: int = 0
         
         while len(C) > k:
-            # Logic from Project 1: Find a node in C with in-degree 0 
-            # *relative to other nodes in C*
+            node_to_remove: int | None = None
+            subgraph: nx.DiGraph = G.subgraph(C)
+            basic_ops += len(C)
             
-            node_to_remove = None
-            
-            # Create subgraph to check degrees (Expensive operation!)
-            subgraph = G.subgraph(C)
-            basic_ops += len(C) # Subgraph creation cost approximation
-            
-            # Linear scan for a sink/source node to remove
             for u in C:
                 basic_ops += 1
                 if subgraph.in_degree(u) == 0:
                     node_to_remove = u
-                    break # Found one, greedy choice
+                    break
             
             if node_to_remove is not None:
                 C.remove(node_to_remove)
             else:
-                # STUCK! The graph has a cycle (SCC) and no node has in-degree 0.
                 return False, C, {
-                    "time": time.perf_counter() - start_time, 
+                    "time": time.perf_counter() - start_time,
                     "status": "STUCK_ON_CYCLE",
                     "basic_ops": basic_ops
                 }
-
-        # If we exit loop, we reached size k
+        
         return True, C, {
-            "time": time.perf_counter() - start_time, 
+            "time": time.perf_counter() - start_time,
             "status": "SUCCESS",
             "basic_ops": basic_ops
         }
